@@ -3,23 +3,17 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	"github.com/denvyworking/kafka-redis-orders/internal/config"
 	ourkfk "github.com/denvyworking/kafka-redis-orders/internal/ourkafka"
 	ourrdb "github.com/denvyworking/kafka-redis-orders/internal/ourredis"
+	"github.com/denvyworking/kafka-redis-orders/pkg/models"
 )
-
-type Order struct {
-	OrderID string  `json:"order_id"`
-	UserID  string  `json:"user_id"`
-	Total   float64 `json:"total"`
-	Status  string  `json:"status"`
-}
 
 func main() {
 	brokers := []string{"localhost:9092"}
@@ -30,8 +24,8 @@ func main() {
 	// и будут делить между собой партиции топика.
 	groupID := "order-consumer-group"
 
-	redisAddr := os.Getenv("REDDIS_ADDR")
-	rdb := ourrdb.NewRedisClient(redisAddr)
+	redisCfg := config.GetRedisConfig()
+	rdb := ourrdb.NewRedisClient(redisCfg.Addr)
 
 	ctx := context.Background()
 
@@ -81,7 +75,7 @@ func main() {
 				continue
 			}
 
-			var order Order
+			var order models.Order
 			if err := json.Unmarshal(msg.Value, &order); err != nil {
 				log.Printf("Ошибка парсинга JSON: %v", err)
 				continue
@@ -90,10 +84,9 @@ func main() {
 
 			order.Status = "processed"
 
-			key := fmt.Sprintf("order:%s", order.OrderID)
 			value, _ := json.Marshal(order)
 
-			if err := rdb.Set(ctx, key, value, 1*time.Hour).Err(); err != nil {
+			if err := rdb.SetOrder(ctx, order.OrderID, value, 1*time.Hour); err != nil {
 				log.Printf("⚠️ Ошибка записи в Redis: %v", err)
 				continue
 			}

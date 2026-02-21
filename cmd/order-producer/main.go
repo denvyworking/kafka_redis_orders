@@ -10,13 +10,8 @@ import (
 	"time"
 
 	ourkfk "github.com/denvyworking/kafka-redis-orders/internal/ourkafka"
+	"github.com/denvyworking/kafka-redis-orders/pkg/dto"
 )
-
-type Order struct {
-	OrderID string  `json:"order_id"`
-	UserID  string  `json:"user_id"`
-	Total   float64 `json:"total"`
-}
 
 func main() {
 	// Продюсер - это сервер или приложение, которое отправляет сообщения в Kafka.
@@ -39,7 +34,7 @@ func main() {
 	log.Println("📬 Начинаем отправку заказов...")
 
 	for i := 0; i < 10; i++ {
-		order := Order{
+		order := dto.Order{
 			OrderID: fmt.Sprintf("order-%d-%d", i, time.Now().Unix()),
 			UserID:  fmt.Sprintf("user-%d", rand.Intn(3)),
 			Total:   10 + rand.Float64()*90,
