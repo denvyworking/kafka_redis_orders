@@ -23,7 +23,7 @@ type Order struct {
 
 // RedisClient — обёртка для удобства
 type RedisClient struct {
-	client *redis.Client
+	client *ourredis.Client
 }
 
 func NewRedisClient(addr string) (*RedisClient, error) {

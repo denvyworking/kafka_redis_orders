@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	ourkfk "github.com/yourname/go-kafka-redis-playground/internal/ourkafka"
@@ -40,6 +42,20 @@ func main() {
 
 	reader := ourkfk.NewConsumer(brokers, groupID, topic)
 
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// отдельная горутина для обработки сигналов завершения
+	go func() {
+		sig := <-signalChan
+		log.Printf("\n⚠️ Получен сигнал остановки: %v", sig)
+		log.Println("🔄 Начинаем корректное завершение работы...")
+		cancel()
+	}()
+
 	defer func() {
 		if err := reader.Close(); err != nil {
 			log.Printf("ошибка закрытия reader: %v", err)
@@ -53,32 +69,39 @@ func main() {
 	log.Printf("Топик: %s, Группа: %s", topic, groupID)
 
 	for {
-		msg, err := reader.ReadMessage(ctx)
-		if err != nil {
-			log.Printf("Ошибка чтения сообщения: %v", err)
-			continue
+		select {
+		case <-ctx.Done():
+			log.Println("✅ Завершение работы потребителя...")
+			time.Sleep(500 * time.Millisecond)
+			return
+		default:
+			msg, err := reader.ReadMessage(ctx)
+			if err != nil {
+				log.Printf("Ошибка чтения сообщения: %v", err)
+				continue
+			}
+
+			var order Order
+			if err := json.Unmarshal(msg.Value, &order); err != nil {
+				log.Printf("Ошибка парсинга JSON: %v", err)
+				continue
+			}
+			log.Printf("Получен заказ: %+v", order)
+
+			order.Status = "processed"
+
+			key := fmt.Sprintf("order:%s", order.OrderID)
+			value, _ := json.Marshal(order)
+
+			if err := rdb.Set(ctx, key, value, 1*time.Hour).Err(); err != nil {
+				log.Printf("⚠️ Ошибка записи в Redis: %v", err)
+				continue
+			}
+
+			log.Printf("✅ Обработан: ID=%s, User=%s, Total=%.2f (сохранено в Redis)",
+				order.OrderID,
+				order.UserID,
+				order.Total)
 		}
-
-		var order Order
-		if err := json.Unmarshal(msg.Value, &order); err != nil {
-			log.Printf("Ошибка парсинга JSON: %v", err)
-			continue
-		}
-		log.Printf("Получен заказ: %+v", order)
-
-		order.Status = "processed"
-
-		key := fmt.Sprintf("order:%s", order.OrderID)
-		value, _ := json.Marshal(order)
-
-		if err := rdb.Set(ctx, key, value, 1*time.Hour).Err(); err != nil {
-			log.Printf("⚠️ Ошибка записи в Redis: %v", err)
-			continue
-		}
-
-		log.Printf("✅ Обработан: ID=%s, User=%s, Total=%.2f (сохранено в Redis)",
-			order.OrderID,
-			order.UserID,
-			order.Total)
 	}
 }

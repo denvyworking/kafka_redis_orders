@@ -27,7 +27,11 @@ func main() {
 	topic := "orders"
 
 	producer := ourkfk.NewProducer(brokers, topic)
-	defer producer.Close()
+	defer func() {
+		if err := producer.Close(); err != nil {
+			log.Fatalf("failed to close producer: %v", err)
+		}
+	}()
 
 	rand.Seed(time.Now().UnixNano())
 	ctx := context.Background()
