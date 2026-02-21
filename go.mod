@@ -1,4 +1,4 @@
-module github.com/yourname/go-kafka-redis-playground
+module github.com/denvyworking/kafka-redis-orders
 
 go 1.24.6
 

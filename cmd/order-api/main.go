@@ -10,8 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/redis/go-redis/v9"
-	"github.com/yourname/go-kafka-redis-playground/internal/ourredis"
+	"github.com/denvyworking/kafka-redis-orders/internal/ourredis"
 )
 
 type Order struct {
@@ -21,47 +20,7 @@ type Order struct {
 	Status  string  `json:"status"`
 }
 
-// RedisClient — обёртка для удобства
-type RedisClient struct {
-	client *ourredis.Client
-}
-
-func NewRedisClient(addr string) (*RedisClient, error) {
-	rdb := ourredis.NewRedisClient(addr)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	if err := rdb.Ping(ctx).Err(); err != nil {
-		return nil, fmt.Errorf("failed to connect to Redis: %w", err)
-	}
-
-	return &RedisClient{client: rdb}, nil
-}
-
-func (r *RedisClient) GetOrder(ctx context.Context, orderID string) (*Order, error) {
-	key := fmt.Sprintf("order:%s", orderID)
-	data, err := r.client.Get(ctx, key).Bytes()
-	if err != nil {
-		if err == redis.Nil {
-			return nil, fmt.Errorf("order not found")
-		}
-		return nil, fmt.Errorf("failed to get order from Redis: %w", err)
-	}
-
-	var order Order
-	if err := json.Unmarshal(data, &order); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal order data: %w", err)
-	}
-
-	return &order, nil
-}
-
-func (r *RedisClient) Close() error {
-	return r.client.Close()
-}
-
-func HandleGetOrder(redisClient *RedisClient) http.HandlerFunc {
+func HandleGetOrder(redisClient *ourredis.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -104,8 +63,10 @@ func main() {
 	if httpPort == "" {
 		httpPort = "8080"
 	}
-	redisClient, err := NewRedisClient(redisAddr)
-	if err != nil {
+	redisClient := ourredis.NewRedisClient(redisAddr)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := redisClient.Ping(ctx).Err(); err != nil {
 		fmt.Printf("Error connecting to Redis: %v\n", err)
 		return
 	}

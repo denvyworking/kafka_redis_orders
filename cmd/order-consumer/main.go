@@ -10,8 +10,8 @@ import (
 	"syscall"
 	"time"
 
-	ourkfk "github.com/yourname/go-kafka-redis-playground/internal/ourkafka"
-	ourrdb "github.com/yourname/go-kafka-redis-playground/internal/ourredis"
+	ourkfk "github.com/denvyworking/kafka-redis-orders/internal/ourkafka"
+	ourrdb "github.com/denvyworking/kafka-redis-orders/internal/ourredis"
 )
 
 type Order struct {

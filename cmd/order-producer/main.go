@@ -9,7 +9,7 @@ import (
 
 	"time"
 
-	ourkfk "github.com/yourname/go-kafka-redis-playground/internal/ourkafka"
+	ourkfk "github.com/denvyworking/kafka-redis-orders/internal/ourkafka"
 )
 
 type Order struct {
