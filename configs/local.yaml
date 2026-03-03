@@ -1,0 +1,12 @@
+kafka:
+  brokers:
+    - "localhost:9092"
+  topic: "orders"
+  group_id: "order-consumer-group"
+
+redis:
+  addr: "localhost:6379"
+  order_ttl: "1h"
+
+http:
+  port: "8080"

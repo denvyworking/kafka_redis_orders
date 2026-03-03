@@ -9,6 +9,7 @@ import (
 
 	"time"
 
+	"github.com/denvyworking/kafka-redis-orders/internal/config"
 	ourkfk "github.com/denvyworking/kafka-redis-orders/internal/ourkafka"
 	"github.com/denvyworking/kafka-redis-orders/pkg/dto"
 )
@@ -18,10 +19,10 @@ func main() {
 	// Он отвечает за создание и отправку сообщений в определенные топики Kafka.
 	// В нашем примере это localhost:9092, который является адресом нашего Kafka брокера,
 	// и топик "orders", куда мы будем отправлять наши заказы.
-	brokers := []string{"localhost:9092"}
-	topic := "orders"
+	cfg := config.MustLoad()
 
-	producer := ourkfk.NewProducer(brokers, topic)
+	producer := ourkfk.NewProducer(cfg.Kafka.Brokers, cfg.Kafka.Topic)
+
 	defer func() {
 		if err := producer.Close(); err != nil {
 			log.Fatalf("failed to close producer: %v", err)

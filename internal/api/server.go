@@ -67,7 +67,6 @@ func (s *Server) handleGetOrder(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(order)
 }

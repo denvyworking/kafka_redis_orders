@@ -13,10 +13,9 @@ import (
 )
 
 func main() {
-	redisCfg := config.GetRedisConfig()
-	httpCfg := config.GetHTTPConfig()
+	cfg := config.MustLoad()
 
-	redisClient := ourredis.NewRedisClient(redisCfg.Addr)
+	redisClient := ourredis.NewRedisClient(cfg.Redis.Addr)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := redisClient.Ping(ctx).Err(); err != nil {
@@ -33,8 +32,8 @@ func main() {
 
 	server := api.NewServer(redisClient)
 
-	log.Printf("🚀 Starting server on port %s...", httpCfg.Port)
-	if err := http.ListenAndServe(":"+httpCfg.Port, server); err != nil {
+	log.Printf("🚀 Starting server on port %s...", cfg.HTTP.Port)
+	if err := http.ListenAndServe(":"+cfg.HTTP.Port, server); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}
 }

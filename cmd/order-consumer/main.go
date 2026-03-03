@@ -16,16 +16,12 @@ import (
 )
 
 func main() {
-	brokers := []string{"localhost:9092"}
-
-	topic := "orders"
 
 	// все консьюмеры с одинаковой groupID будут в одной группе
 	// и будут делить между собой партиции топика.
-	groupID := "order-consumer-group"
+	cfg := config.MustLoad()
 
-	redisCfg := config.GetRedisConfig()
-	rdb := ourrdb.NewRedisClient(redisCfg.Addr)
+	rdb := ourrdb.NewRedisClient(cfg.Redis.Addr)
 
 	ctx := context.Background()
 
@@ -34,7 +30,7 @@ func main() {
 	}
 	log.Println("✅ Подключено к Redis")
 
-	reader := ourkfk.NewConsumer(brokers, groupID, topic)
+	reader := ourkfk.NewConsumer(cfg.Kafka.Brokers, cfg.Kafka.Topic, cfg.Kafka.GroupID)
 
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
@@ -45,8 +41,8 @@ func main() {
 	// отдельная горутина для обработки сигналов завершения
 	go func() {
 		sig := <-signalChan
-		log.Printf("\n⚠️ Получен сигнал остановки: %v", sig)
-		log.Println("🔄 Начинаем корректное завершение работы...")
+		log.Printf("\nПолучен сигнал остановки: %v", sig)
+		log.Println("Начинаем корректное завершение работы...")
 		cancel()
 	}()
 
@@ -60,12 +56,12 @@ func main() {
 	}()
 
 	log.Println("📬 Запускаем потребитель Kafka...")
-	log.Printf("Топик: %s, Группа: %s", topic, groupID)
+	log.Printf("Топик: %s, Группа: %s", cfg.Kafka.Topic, cfg.Kafka.GroupID)
 
 	for {
 		select {
 		case <-ctx.Done():
-			log.Println("✅ Завершение работы потребителя...")
+			log.Println("Завершение работы потребителя...")
 			time.Sleep(500 * time.Millisecond)
 			return
 		default:
@@ -86,8 +82,8 @@ func main() {
 
 			value, _ := json.Marshal(order)
 
-			if err := rdb.SetOrder(ctx, order.OrderID, value, 1*time.Hour); err != nil {
-				log.Printf("⚠️ Ошибка записи в Redis: %v", err)
+			if err := rdb.SetOrder(ctx, order.OrderID, value, cfg.Redis.OrderTTL); err != nil {
+				log.Printf("Ошибка записи в Redis: %v", err)
 				continue
 			}
 
