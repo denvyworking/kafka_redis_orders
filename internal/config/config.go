@@ -13,6 +13,14 @@ type Config struct {
 	Kafka KafkaConfig `yaml:"kafka"`
 	Redis RedisConfig `yaml:"redis"`
 	HTTP  HTTPConfig  `yaml:"http"`
+	Retry RetryConfig `yaml:"retry"`
+}
+
+type RetryConfig struct {
+	InitialInterval time.Duration `yaml:"initial_interval" env:"RETRY_INITIAL_INTERVAL" env-default:"200ms"`
+	MaxInterval     time.Duration `yaml:"max_interval" env:"RETRY_MAX_INTERVAL" env-default:"5s"`
+	MaxElapsedTime  time.Duration `yaml:"max_elapsed_time" env:"RETRY_MAX_ELAPSED_TIME" env-default:"30s"`
+	Multiplier      float64       `yaml:"multiplier" env:"RETRY_MULTIPLIER" env-default:"2.0"`
 }
 
 type KafkaConfig struct {
@@ -39,7 +47,7 @@ func Load(path string) (*Config, error) {
 }
 
 // MustLoad читает конфиг из пути CONFIG_PATH (env),
-// если переменная не задана — использует configs/local.yaml.
+// если переменная не задана - использует configs/local.yaml.
 func MustLoad() *Config {
 	path := os.Getenv("CONFIG_PATH")
 	if path == "" {

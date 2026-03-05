@@ -12,6 +12,7 @@ import (
 	"github.com/denvyworking/kafka-redis-orders/internal/config"
 	ourkfk "github.com/denvyworking/kafka-redis-orders/internal/ourkafka"
 	ourrdb "github.com/denvyworking/kafka-redis-orders/internal/ourredis"
+	"github.com/denvyworking/kafka-redis-orders/internal/retry"
 	"github.com/denvyworking/kafka-redis-orders/pkg/models"
 )
 
@@ -20,6 +21,7 @@ func main() {
 	// все консьюмеры с одинаковой groupID будут в одной группе
 	// и будут делить между собой партиции топика.
 	cfg := config.MustLoad()
+	retryCfg := retry.NewConfig(cfg.Retry)
 
 	rdb := ourrdb.NewRedisClient(cfg.Redis.Addr)
 
@@ -82,8 +84,10 @@ func main() {
 
 			value, _ := json.Marshal(order)
 
-			if err := rdb.SetOrder(ctx, order.OrderID, value, cfg.Redis.OrderTTL); err != nil {
-				log.Printf("Ошибка записи в Redis: %v", err)
+			if err := retry.Do(ctx, "redis_set_order", retryCfg, func() error {
+				return rdb.SetOrder(ctx, order.OrderID, value, cfg.Redis.OrderTTL)
+			}); err != nil {
+				log.Printf("Ошибка записи в Redis после retry: %v", err)
 				continue
 			}
 
