@@ -24,11 +24,11 @@ api:
 
 .PHONY: build
 build:
-	@echo "🔨 Собираем бинарники..."
+	@echo "Собираем бинарники..."
 	go build -o bin/order-producer $(PRODUCER_CMD)
 	go build -o bin/order-consumer $(CONSUMER_CMD)
 	go build -o bin/order-api $(API_CMD)
-	@echo "✅ Бинарники собраны в папке bin/"
+	@echo "Бинарники собраны в папке bin/"
 
 
 .PHONY: test

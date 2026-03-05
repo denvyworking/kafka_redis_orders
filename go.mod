@@ -3,6 +3,7 @@ module github.com/denvyworking/kafka-redis-orders
 go 1.24.6
 
 require (
+	github.com/cenkalti/backoff/v4 v4.3.0
 	github.com/ilyakaznacheev/cleanenv v1.5.0
 	github.com/redis/go-redis/v9 v9.18.0
 	github.com/segmentio/kafka-go v0.4.50

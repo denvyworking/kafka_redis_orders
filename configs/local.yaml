@@ -10,3 +10,9 @@ redis:
 
 http:
   port: "8080"
+
+retry:
+  initial_interval: "200ms"
+  max_interval: "5s"
+  max_elapsed_time: "30s"
+  multiplier: 2.0

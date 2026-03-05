@@ -11,6 +11,7 @@ import (
 
 	"github.com/denvyworking/kafka-redis-orders/internal/config"
 	ourkfk "github.com/denvyworking/kafka-redis-orders/internal/ourkafka"
+	"github.com/denvyworking/kafka-redis-orders/internal/retry"
 	"github.com/denvyworking/kafka-redis-orders/pkg/dto"
 )
 
@@ -20,6 +21,7 @@ func main() {
 	// В нашем примере это localhost:9092, который является адресом нашего Kafka брокера,
 	// и топик "orders", куда мы будем отправлять наши заказы.
 	cfg := config.MustLoad()
+	retryCfg := retry.NewConfig(cfg.Retry)
 
 	producer := ourkfk.NewProducer(cfg.Kafka.Brokers, cfg.Kafka.Topic)
 
@@ -49,8 +51,11 @@ func main() {
 		msg := ourkfk.Message(order.UserID, string(payload))
 		// WriteMessages - это метод, который отправляет одно или
 		// несколько сообщений в Kafka.
-		if err := producer.WriteMessages(ctx, msg); err != nil {
-			log.Fatalf("ошибка отправки: %v", err)
+		if err := retry.Do(ctx, "kafka_write_message", retryCfg, func() error {
+			return producer.WriteMessages(ctx, msg)
+		}); err != nil {
+			log.Printf("ошибка отправки после retry, пропускаем сообщение: %v", err)
+			continue
 		}
 
 		log.Printf("Отправлен: %+v", order)
