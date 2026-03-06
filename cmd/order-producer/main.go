@@ -51,7 +51,7 @@ func main() {
 		msg := ourkfk.Message(order.UserID, string(payload))
 		// WriteMessages - это метод, который отправляет одно или
 		// несколько сообщений в Kafka.
-		if err := retry.Do(ctx, "kafka_write_message", retryCfg, func() error {
+		if err := retryCfg.Do(ctx, "kafka_write_message", func() error {
 			return producer.WriteMessages(ctx, msg)
 		}); err != nil {
 			log.Printf("ошибка отправки после retry, пропускаем сообщение: %v", err)

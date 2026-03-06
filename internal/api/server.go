@@ -45,8 +45,7 @@ func (s *Server) handleGetOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	path := strings.TrimPrefix(r.URL.Path, "/order/")
-	orderID := path
+	orderID := strings.TrimPrefix(r.URL.Path, "/order/")
 	if orderID == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		_ = json.NewEncoder(w).Encode(map[string]string{"error": "Order ID is required"})

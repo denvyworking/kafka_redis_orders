@@ -84,7 +84,7 @@ func main() {
 
 			value, _ := json.Marshal(order)
 
-			if err := retry.Do(ctx, "redis_set_order", retryCfg, func() error {
+			if err := retryCfg.Do(ctx, "redis_set_order", func() error {
 				return rdb.SetOrder(ctx, order.OrderID, value, cfg.Redis.OrderTTL)
 			}); err != nil {
 				log.Printf("Ошибка записи в Redis после retry: %v", err)
