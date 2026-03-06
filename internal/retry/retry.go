@@ -26,12 +26,12 @@ func NewConfig(c config.RetryConfig) Config {
 	}
 }
 
-func Do(ctx context.Context, op string, cfg Config, fn func() error) error {
+func (c Config) Do(ctx context.Context, op string, fn func() error) error {
 	bo := backoff.NewExponentialBackOff()
-	bo.InitialInterval = cfg.InitialInterval
-	bo.MaxInterval = cfg.MaxInterval
-	bo.MaxElapsedTime = cfg.MaxElapsedTime
-	bo.Multiplier = cfg.Multiplier
+	bo.InitialInterval = c.InitialInterval
+	bo.MaxInterval = c.MaxInterval
+	bo.MaxElapsedTime = c.MaxElapsedTime
+	bo.Multiplier = c.Multiplier
 
 	attempt := 0
 
