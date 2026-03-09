@@ -9,16 +9,25 @@ import (
 	"time"
 
 	"github.com/denvyworking/kafka-redis-orders/internal/ourredis"
+	"github.com/denvyworking/kafka-redis-orders/pkg/models"
 )
 
+type orderStore interface {
+	GetOrder(ctx context.Context, orderID string) (*models.Order, error)
+}
+
 type Server struct {
-	redis *ourredis.Client
+	redis orderStore
 	mux   *http.ServeMux
 }
 
 func NewServer(redisClient *ourredis.Client) *Server {
+	return NewServerWithStore(redisClient)
+}
+
+func NewServerWithStore(store orderStore) *Server {
 	s := &Server{
-		redis: redisClient,
+		redis: store,
 		mux:   http.NewServeMux(),
 	}
 
