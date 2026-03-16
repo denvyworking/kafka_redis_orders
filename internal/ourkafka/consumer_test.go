@@ -29,13 +29,16 @@ func (m *mockReader) Close() error {
 }
 
 func TestConsumerReadMessageSuccess(t *testing.T) {
+	// Arrange
 	expected := kafka.Message{Key: []byte("k1"), Value: []byte("v1")}
 	mr := &mockReader{msg: expected}
 	c := newConsumerWithReader(mr)
 
+	// Act
 	ctx := context.Background()
 	msg, err := c.ReadMessage(ctx)
 
+	// Assert
 	require.NoError(t, err)
 	require.Equal(t, expected, msg)
 	require.Equal(t, ctx, mr.gotCtx)
@@ -46,6 +49,7 @@ func TestConsumerReadMessageError(t *testing.T) {
 	c := newConsumerWithReader(mr)
 
 	_, err := c.ReadMessage(context.Background())
+
 	require.ErrorContains(t, err, "read failed")
 }
 
@@ -54,6 +58,7 @@ func TestConsumerCloseSuccess(t *testing.T) {
 	c := newConsumerWithReader(mr)
 
 	err := c.Close()
+
 	require.NoError(t, err)
 }
 
@@ -62,5 +67,6 @@ func TestConsumerCloseError(t *testing.T) {
 	c := newConsumerWithReader(mr)
 
 	err := c.Close()
+
 	require.ErrorContains(t, err, "close failed")
 }

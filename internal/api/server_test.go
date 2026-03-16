@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/denvyworking/kafka-redis-orders/internal/ourredis"
@@ -38,6 +39,24 @@ func TestHandleHealth(t *testing.T) {
 	require.Equal(t, http.StatusOK, rec.Code)
 	require.Equal(t, "application/json", rec.Header().Get("Content-Type"))
 	require.JSONEq(t, `{"status":"healthy"}`+"\n", rec.Body.String())
+}
+
+func TestMetricsEndpoint(t *testing.T) {
+	s := NewServerWithStore(mockOrderStore{getOrderFn: func(ctx context.Context, orderID string) (*models.Order, error) {
+		return &models.Order{}, nil
+	}})
+
+	s.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/health", nil))
+
+	req := httptest.NewRequest(http.MethodGet, "/metrics", nil)
+	rec := httptest.NewRecorder()
+
+	s.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.True(t, strings.Contains(rec.Header().Get("Content-Type"), "text/plain"))
+	require.Contains(t, rec.Body.String(), "http_requests_total")
+	require.Contains(t, rec.Body.String(), "http_request_duration_seconds")
 }
 
 func TestHandleGetOrderMethodNotAllowed(t *testing.T) {
