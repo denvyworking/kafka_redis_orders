@@ -25,6 +25,7 @@ func NewRedisClient(addr string) *Client {
 	}
 }
 
+// 2
 func (c *Client) SetOrder(ctx context.Context, orderID string, value []byte, ttl time.Duration) error {
 	key := fmt.Sprintf("order:%s", orderID)
 	return c.Set(ctx, key, value, ttl).Err()
@@ -34,16 +35,19 @@ func (c *Client) Close() error {
 	return c.Client.Close()
 }
 
+// 3
 func (r *Client) GetOrder(ctx context.Context, orderID string) (*models.Order, error) {
 	key := fmt.Sprintf("order:%s", orderID)
-	data, err := r.Client.Get(ctx, key).Bytes()
+	data, err := r.Get(ctx, key).Bytes()
 	if err != nil {
+		//4
 		if err == redis.Nil {
 			return nil, ErrOrderNotFound
 		}
 		return nil, fmt.Errorf("failed to get order from Redis: %w", err)
 	}
 
+	//5
 	var order models.Order
 	if err := json.Unmarshal(data, &order); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal order data: %w", err)

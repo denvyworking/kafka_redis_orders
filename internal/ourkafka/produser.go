@@ -6,8 +6,13 @@ import (
 	"github.com/segmentio/kafka-go"
 )
 
+type messageWriter interface {
+	WriteMessages(ctx context.Context, msgs ...kafka.Message) error
+	Close() error
+}
+
 type Producer struct {
-	writer *kafka.Writer
+	writer messageWriter
 }
 
 func NewProducer(brokers []string, topic string) *Producer {
@@ -25,12 +30,12 @@ func NewProducer(brokers []string, topic string) *Producer {
 	}
 }
 
+func newProducerWithWriter(writer messageWriter) *Producer {
+	return &Producer{writer: writer}
+}
+
 func (p *Producer) Close() error {
-	err := p.writer.Close()
-	if err != nil {
-		return err
-	}
-	return nil
+	return p.writer.Close()
 }
 
 func (p *Producer) WriteMessages(ctx context.Context, msgs ...kafka.Message) error {

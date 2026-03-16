@@ -5,21 +5,59 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/denvyworking/kafka-redis-orders/internal/ourredis"
+	"github.com/denvyworking/kafka-redis-orders/pkg/models"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
+type orderStore interface {
+	GetOrder(ctx context.Context, orderID string) (*models.Order, error)
+}
+
 type Server struct {
-	redis *ourredis.Client
-	mux   *http.ServeMux
+	redis           orderStore
+	mux             *http.ServeMux
+	registry        *prometheus.Registry
+	requestsTotal   *prometheus.CounterVec
+	requestDuration *prometheus.HistogramVec
 }
 
 func NewServer(redisClient *ourredis.Client) *Server {
+	return NewServerWithStore(redisClient)
+}
+
+func NewServerWithStore(store orderStore) *Server {
+	registry := prometheus.NewRegistry()
+	requestsTotal := prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "http_requests_total",
+			Help: "Total amount of HTTP requests grouped by route, method and status code.",
+		},
+		[]string{"route", "method", "status"},
+	)
+
+	requestDuration := prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "http_request_duration_seconds",
+			Help:    "HTTP request latency in seconds grouped by route and method.",
+			Buckets: prometheus.DefBuckets,
+		},
+		[]string{"route", "method"},
+	)
+
+	registry.MustRegister(requestsTotal, requestDuration)
+
 	s := &Server{
-		redis: redisClient,
-		mux:   http.NewServeMux(),
+		redis:           store,
+		mux:             http.NewServeMux(),
+		registry:        registry,
+		requestsTotal:   requestsTotal,
+		requestDuration: requestDuration,
 	}
 
 	s.routes()
@@ -27,10 +65,36 @@ func NewServer(redisClient *ourredis.Client) *Server {
 }
 
 func (s *Server) routes() {
-	s.mux.HandleFunc("/order/", s.handleGetOrder)
-	s.mux.HandleFunc("/health", s.handleHealth)
+	s.mux.Handle("/metrics", promhttp.HandlerFor(s.registry, promhttp.HandlerOpts{}))
+	s.mux.HandleFunc("/order/", s.instrument("/order/", s.handleGetOrder))
+	s.mux.HandleFunc("/health", s.instrument("/health", s.handleHealth))
 }
 
+func (s *Server) instrument(route string, next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		startedAt := time.Now()
+		recorder := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
+
+		next(recorder, r)
+
+		status := strconv.Itoa(recorder.status)
+		s.requestsTotal.WithLabelValues(route, r.Method, status).Inc()
+		s.requestDuration.WithLabelValues(route, r.Method).Observe(time.Since(startedAt).Seconds())
+	}
+}
+
+type statusRecorder struct {
+	http.ResponseWriter
+	status int
+}
+
+func (sr *statusRecorder) WriteHeader(statusCode int) {
+	sr.status = statusCode
+	sr.ResponseWriter.WriteHeader(statusCode)
+}
+
+// ServeHTTP реализует интерфейс http.Handler,
+// позволяя Server обрабатывать HTTP-запросы
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.mux.ServeHTTP(w, r)
 }
