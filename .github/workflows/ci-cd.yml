@@ -53,11 +53,10 @@ jobs:
     defaults:
       run:
         shell: cmd
+    env:
+      PROJECT_DIR: C:\Users\denis\Desktop\Progects\Kafka
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
       - name: Ensure Docker Desktop is running
         run: |
           if not exist "C:\Program Files\Docker\Docker\Docker Desktop.exe" (
@@ -79,22 +78,18 @@ jobs:
           echo Docker Desktop did not become ready in time.
           exit /b 1
 
-      - name: Remove leftover containers
-        continue-on-error: true
+      - name: Update local project and deploy
         run: |
-          for %%C in (zk kafka kafka-init order-api order-consumer redis prometheus grafana) do docker rm -f %%C 2>nul
-
-      - name: Stop previous containers
-        continue-on-error: true
-        run: docker compose down --remove-orphans
-
-      - name: Build and start containers
-        run: docker compose up -d --build
+          cd /d "%PROJECT_DIR%"
+          git pull origin main
+          docker compose down --remove-orphans
+          docker compose up -d --build
 
       - name: Wait for services to start
         run: timeout /t 10 /nobreak >nul
 
       - name: Check service status
         run: |
+          cd /d "%PROJECT_DIR%"
           docker compose ps
           curl.exe http://localhost:8000/health
