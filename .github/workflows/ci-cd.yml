@@ -35,7 +35,7 @@ jobs:
         run: |
           echo "Checking service health..."
           docker compose ps
-          docker logs order-api || true
+          docker compose logs order-api || true
           curl -s http://localhost:8000/health || echo "Health check not available yet"
 
       - name: Cleanup test environment

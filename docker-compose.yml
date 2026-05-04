@@ -1,7 +1,6 @@
 services:
   zookeeper:
     image: confluentinc/cp-zookeeper:7.6.0
-    container_name: zk
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
@@ -10,7 +9,6 @@ services:
 
   kafka:
     image: confluentinc/cp-kafka:7.6.0
-    container_name: kafka
     depends_on:
       - zookeeper
     ports:
@@ -32,7 +30,6 @@ services:
 
   kafka-init:
     image: confluentinc/cp-kafka:7.6.0
-    container_name: kafka-init
     depends_on:
       kafka:
         condition: service_healthy
@@ -44,7 +41,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: order-api
     depends_on:
       - redis
     environment:
@@ -57,7 +53,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: order-consumer
     depends_on:
       - kafka
       - kafka-init
@@ -68,7 +63,6 @@ services:
 
   redis:
     image: redis:7.2-alpine
-    container_name: redis
     ports:
       - "6379:6379"
     # Если контейнер перезагрузится - данные в Redis не пропадут
@@ -79,7 +73,6 @@ services:
 
   prometheus:
     image: prom/prometheus:v2.55.1
-    container_name: prometheus
     ports:
       - "9090:9090"
     volumes:
@@ -91,7 +84,6 @@ services:
 
   grafana:
     image: grafana/grafana:11.2.2
-    container_name: grafana
     depends_on:
       - prometheus
     ports:
