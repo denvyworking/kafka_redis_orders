@@ -41,7 +41,7 @@ services:
 
   order-api:
     build:
-      context: .
+      context: ..
       dockerfile: Dockerfile
     depends_on:
       - redis
@@ -51,7 +51,7 @@ services:
 
   order-consumer:
     build:
-      context: .
+      context: ..
       dockerfile: Dockerfile
     depends_on:
       - kafka
