@@ -52,44 +52,47 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     defaults:
       run:
-        shell: cmd
+        shell: bash
     env:
-      PROJECT_DIR: C:\Users\denis\Desktop\Progects\Kafka
+      PROJECT_DIR: /c/Users/denis/Desktop/Progects/Kafka
 
     steps:
       - name: Ensure Docker Desktop is running
         run: |
-          if not exist "C:\Program Files\Docker\Docker\Docker Desktop.exe" (
-            echo Docker Desktop is not installed in the default location.
-            exit /b 1
-          )
+          if ! docker info >/dev/null 2>&1; then
+            if [ ! -f "/c/Program Files/Docker/Docker/Docker Desktop.exe" ]; then
+              echo "Docker Desktop is not installed in the default location."
+              exit 1
+            fi
 
-          docker info >nul 2>&1
-          if %errorlevel% equ 0 exit /b 0
+            echo "Starting Docker Desktop..."
+            powershell.exe -NoProfile -Command "Start-Process -FilePath 'C:\Program Files\Docker\Docker\Docker Desktop.exe'"
 
-          echo Starting Docker Desktop...
-          start "" "C:\Program Files\Docker\Docker\Docker Desktop.exe"
+            for _ in $(seq 1 60); do
+              if docker info >/dev/null 2>&1; then
+                break
+              fi
+              sleep 5
+            done
+          fi
 
-          for /l %%i in (1,1,60) do (
-            docker info >nul 2>&1 && exit /b 0
-            timeout /t 5 /nobreak >nul
-          )
-
-          echo Docker Desktop did not become ready in time.
-          exit /b 1
+          docker info >/dev/null 2>&1 || {
+            echo "Docker Desktop did not become ready in time."
+            exit 1
+          }
 
       - name: Update local project and deploy
         run: |
-          cd /d "%PROJECT_DIR%"
+          cd "$PROJECT_DIR"
           git pull origin main
           docker compose down --remove-orphans
           docker compose up -d --build
 
       - name: Wait for services to start
-        run: timeout /t 10 /nobreak >nul
+        run: sleep 10
 
       - name: Check service status
         run: |
-          cd /d "%PROJECT_DIR%"
+          cd "$PROJECT_DIR"
           docker compose ps
           curl.exe http://localhost:8000/health
