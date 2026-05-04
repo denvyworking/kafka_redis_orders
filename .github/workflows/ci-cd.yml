@@ -56,6 +56,27 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Ensure Docker Desktop is running
+        run: |
+          if not exist "C:\Program Files\Docker\Docker\Docker Desktop.exe" (
+            echo Docker Desktop is not installed in the default location.
+            exit /b 1
+          )
+
+          docker info >nul 2>&1
+          if %errorlevel% equ 0 exit /b 0
+
+          echo Starting Docker Desktop...
+          start "" "C:\Program Files\Docker\Docker\Docker Desktop.exe"
+
+          for /l %%i in (1,1,60) do (
+            docker info >nul 2>&1 && exit /b 0
+            timeout /t 5 /nobreak >nul
+          )
+
+          echo Docker Desktop did not become ready in time.
+          exit /b 1
+
       - name: Stop previous containers
         continue-on-error: true
         run: docker compose down --remove-orphans
