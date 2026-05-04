@@ -64,15 +64,15 @@ jobs:
             exit /b 1
           )
 
-          docker info >nul 2>&1
+          docker info
           if %errorlevel% equ 0 exit /b 0
 
           echo Starting Docker Desktop...
           start "" "C:\Program Files\Docker\Docker\Docker Desktop.exe"
 
           for /l %%i in (1,1,60) do (
-            docker info >nul 2>&1 && exit /b 0
-            timeout /t 5 /nobreak >nul
+            docker info && exit /b 0
+            powershell.exe -NoProfile -Command "Start-Sleep -Seconds 5"
           )
 
           echo Docker Desktop did not become ready in time.
@@ -86,7 +86,7 @@ jobs:
           docker compose up -d --build
 
       - name: Wait for services to start
-        run: timeout /t 10 /nobreak >nul
+        run: powershell.exe -NoProfile -Command "Start-Sleep -Seconds 10"
 
       - name: Check service status
         run: |
