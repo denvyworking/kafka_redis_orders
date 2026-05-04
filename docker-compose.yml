@@ -18,10 +18,53 @@ services:
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://127.0.0.1:9092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,PLAINTEXT_HOST://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://127.0.0.1:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    healthcheck:
+      test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  kafka-init:
+    image: confluentinc/cp-kafka:7.6.0
+    container_name: kafka-init
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command: >
+      "kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic orders --partitions 1 --replication-factor 1"
+
+  order-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: order-api
+    depends_on:
+      - redis
+    environment:
+      CONFIG_PATH: configs/prod.yaml
+      HTTP_PORT: "8080"
+    ports:
+      - "8000:8080"
+
+  order-consumer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: order-consumer
+    depends_on:
+      - kafka
+      - kafka-init
+      - redis
+    environment:
+      CONFIG_PATH: configs/prod.yaml
+    command: ["order-consumer"]
 
   redis:
     image: redis:7.2-alpine
@@ -41,6 +84,8 @@ services:
       - "9090:9090"
     volumes:
       - ./configs/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on:
+      - order-api
     command:
       - --config.file=/etc/prometheus/prometheus.yml
 

@@ -1,6 +1,6 @@
 kafka:
   brokers:
-    - "kafka:9092"
+    - "kafka:29092"
   topic: "orders"
   group_id: "order-consumer-group"
 

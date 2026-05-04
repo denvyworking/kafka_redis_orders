@@ -12,6 +12,7 @@ import (
 	"github.com/denvyworking/kafka-redis-orders/internal/ourredis"
 	"github.com/denvyworking/kafka-redis-orders/pkg/models"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
@@ -33,7 +34,7 @@ func NewServer(redisClient *ourredis.Client) *Server {
 
 func NewServerWithStore(store orderStore) *Server {
 	registry := prometheus.NewRegistry()
-	requestsTotal := prometheus.NewCounterVec(
+	requestsTotal := promauto.With(registry).NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "http_requests_total",
 			Help: "Total amount of HTTP requests grouped by route, method and status code.",
@@ -41,7 +42,7 @@ func NewServerWithStore(store orderStore) *Server {
 		[]string{"route", "method", "status"},
 	)
 
-	requestDuration := prometheus.NewHistogramVec(
+	requestDuration := promauto.With(registry).NewHistogramVec(
 		prometheus.HistogramOpts{
 			Name:    "http_request_duration_seconds",
 			Help:    "HTTP request latency in seconds grouped by route and method.",
@@ -49,8 +50,6 @@ func NewServerWithStore(store orderStore) *Server {
 		},
 		[]string{"route", "method"},
 	)
-
-	registry.MustRegister(requestsTotal, requestDuration)
 
 	s := &Server{
 		redis:           store,
