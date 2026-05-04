@@ -1,0 +1,18 @@
+services:
+  zookeeper:
+    ports: !reset []
+
+  kafka:
+    ports: !reset []
+
+  order-api:
+    ports: !reset []
+
+  redis:
+    ports: !reset []
+
+  prometheus:
+    ports: !reset []
+
+  grafana:
+    ports: !reset []
