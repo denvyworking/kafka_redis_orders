@@ -1,5 +1,9 @@
 # Quick CI/CD Setup Checklist
 
+## Important
+
+Use the Windows self-hosted runner flow for this project. The VM/SSH entries in this checklist are legacy and are not needed for the current workflow.
+
 ## ✅ Prerequisite Tasks
 
 ### On Your Local Machine

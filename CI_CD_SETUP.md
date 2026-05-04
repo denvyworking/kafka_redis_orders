@@ -1,5 +1,9 @@
 # CI/CD Setup Guide
 
+## Important
+
+For this project setup, the active deployment path is a Windows self-hosted runner on your own computer. The old VM/SSH instructions below are legacy notes from the earlier version of the workflow.
+
 ## Overview
 
 This document describes the automated CI/CD pipeline and deployment process for the Kafka Order Service application.

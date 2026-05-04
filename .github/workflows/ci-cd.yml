@@ -6,10 +6,6 @@ on:
   pull_request:
     branches: [ main ]
 
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
-
 jobs:
   build:
     name: Build & Test Docker Image
@@ -48,8 +44,8 @@ jobs:
           docker compose down -v || true
 
   deploy:
-    name: Deploy to VM
-    runs-on: ubuntu-latest
+    name: Deploy on self-hosted runner
+    runs-on: [self-hosted, Windows, X64]
     needs: build
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
@@ -57,39 +53,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.VM_HOST }}
-          username: ${{ secrets.VM_USER }}
-          key: ${{ secrets.VM_SSH_KEY }}
-          port: ${{ secrets.VM_PORT || 22 }}
-          script: |
-            set -e
-            echo "Deploying to VM..."
-            cd ${{ secrets.PROJECT_PATH }}
-            
-            echo "Pulling latest code..."
-            git pull origin main
-            
-            echo "Building and starting containers..."
-            docker compose up -d --build
-            
-            echo "Waiting for services to start..."
-            sleep 10
-            
-            echo "Checking service status..."
-            docker compose ps
-            
-            echo "Deployment completed successfully!"
+      - name: Stop previous containers
+        continue-on-error: true
+        run: docker compose down --remove-orphans
 
-      - name: Verify Deployment
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.VM_HOST }}
-          username: ${{ secrets.VM_USER }}
-          key: ${{ secrets.VM_SSH_KEY }}
-          port: ${{ secrets.VM_PORT || 22 }}
-          script: |
-            echo "Service Status:"
-            docker compose -f ${{ secrets.PROJECT_PATH }}/docker-compose.yml ps
+      - name: Build and start containers
+        run: docker compose up -d --build
+
+      - name: Wait for services to start
+        run: Start-Sleep -Seconds 10
+
+      - name: Check service status
+        run: |
+          docker compose ps
+          curl http://localhost:8000/health

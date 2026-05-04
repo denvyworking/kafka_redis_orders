@@ -107,8 +107,8 @@ on:
 
 ```yaml
 deploy:
-  name: Deploy to VM
-  runs-on: ubuntu-latest
+   name: Deploy on self-hosted runner
+   runs-on: [self-hosted, Windows, X64]
   needs: build              # Зависит от успешной сборки
   if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 ```
@@ -117,42 +117,41 @@ deploy:
 - Только после успешного Build job
 - Только для push (не для pull requests)
 - Только для main ветки
+- Выполняется на твоём Windows-компьютере через self-hosted runner
 
 ### 3.2 Логика деплоя
 
 ```bash
-# 1. Подключение по SSH (автоматическое)
-ssh -i $VM_SSH_KEY $VM_USER@$VM_HOST -p $VM_PORT
+# 1. GitHub Actions сам запускает job на твоём self-hosted runner
 
-# 2. Переход в директорию проекта
-cd $PROJECT_PATH
+# 2. Забирается свежая версия репозитория
+actions/checkout
 
-# 3. Обновление кода
-git pull origin main
+# 3. Останавливаются старые контейнеры
+docker compose down --remove-orphans
 
-# 4. Пересборка и перезапуск контейнеров
+# 4. Собираются и запускаются новые контейнеры
 docker compose up -d --build
 
-# 5. Проверка статуса
-docker compose ps
+# 5. Проверяется локальный endpoint
+curl http://localhost:8000/health
 ```
 
 ### 3.3 Требуемые GitHub Secrets
 
-| Secret | Описание | Пример |
-|--------|----------|--------|
-| `VM_HOST` | IP или hostname ВМ | `203.0.113.42` |
-| `VM_USER` | SSH username | `ubuntu` |
-| `VM_SSH_KEY` | Private SSH key | `-----BEGIN OPENSSH...` |
-| `PROJECT_PATH` | Путь к проекту на ВМ | `/home/ubuntu/Kafka` |
-| `VM_PORT` | SSH порт (опционально) | `22` |
+Для self-hosted runner секреты для SSH и VM не нужны.
+
+Нужно только:
+- зарегистрировать runner в GitHub;
+- установить Docker на своём Windows-компьютере;
+- запустить `run.cmd`, чтобы runner был online.
 
 ### 3.4 Использованный инструмент
 
-**Action:** `appleboy/ssh-action@master`
-- Проверенное решение для SSH деплоя
-- Поддерживает ключ-файл аутентификацию
-- Выполняет скрипты на удалённом сервере
+**Action:** `actions/checkout@v4` + self-hosted runner
+- GitHub сам отдаёт job на твой локальный runner
+- Контейнеры пересобираются на том же компьютере, где крутится сервер
+- Никакого SSH и `VM_HOST` не требуется
 
 **Требования выполнены:**
 - Подключение по SSH автоматическое ✅
@@ -163,57 +162,42 @@ docker compose ps
 
 ## ✅ 4. Проверка работы (Инструкция)
 
-### 4.1 Требуемая настройка на ВМ
+### 4.1 Требуемая настройка на компьютере с сервером
 
 Перед первым деплоем убедитесь:
 
 ```bash
-# На целевой ВМ
-sudo apt-get install -y docker.io docker-compose git
-
-# Добавить пользователя в группу docker
-sudo usermod -aG docker $USER
-newgrp docker
-
-# Клонировать репозиторий
-git clone https://github.com/denvyworking/kafka_redis_orders.git
-cd kafka_redis_orders
-
-# Проверить что всё работает
-docker compose up -d
-docker compose ps
+# Установлен Docker Desktop
+# Установлен GitHub Actions Runner
+# Runner запущен и находится в status: online
 ```
 
 ### 4.2 Шаги для запуска pipeline
 
-#### Шаг 1: Генерация SSH ключа
-
-```bash
-# На локальной машине
-ssh-keygen -t ed25519 -f ~/.ssh/kafka-deploy-key -N ""
-```
-
-#### Шаг 2: Добавление ключа на ВМ
-
-```bash
-ssh-copy-id -i ~/.ssh/kafka-deploy-key.pub user@vm-ip
-```
-
-#### Шаг 3: Конфигурация GitHub Secrets
+### Шаг 1: Добавить self-hosted runner
 
 Перейдите в:
 ```
-GitHub.com → Repository Settings 
-→ Secrets and variables → Actions 
-→ New repository secret
+GitHub.com → Repository Settings
+→ Actions → Runners
+→ New self-hosted runner
 ```
 
-Добавьте все 5 secrets (см. таблицу в 3.3)
+Выберите:
+- `Windows`
+- `x64`
+
+### Шаг 2: Запустить команды runner на своём компьютере
+
+Скопируйте команды, которые GitHub покажет на странице runner, и выполните их в PowerShell.
+
+### Шаг 3: Проверить, что runner online
+
+В GitHub страница runner должна показать `Idle` или `Online`.
 
 #### Шаг 4: Проверка pipeline после push
 
 ```bash
-cd /path/to/project
 git add .
 git commit -m "test: trigger pipeline"
 git push origin main
