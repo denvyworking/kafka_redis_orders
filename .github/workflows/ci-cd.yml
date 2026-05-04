@@ -77,6 +77,11 @@ jobs:
           echo Docker Desktop did not become ready in time.
           exit /b 1
 
+      - name: Remove leftover containers
+        continue-on-error: true
+        run: |
+          for %%C in (zk kafka kafka-init order-api order-consumer redis prometheus grafana) do docker rm -f %%C 2>nul
+
       - name: Stop previous containers
         continue-on-error: true
         run: docker compose down --remove-orphans
