@@ -48,6 +48,9 @@ jobs:
     runs-on: [self-hosted, Windows, X64]
     needs: build
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    defaults:
+      run:
+        shell: cmd
 
     steps:
       - name: Checkout code
@@ -61,9 +64,9 @@ jobs:
         run: docker compose up -d --build
 
       - name: Wait for services to start
-        run: Start-Sleep -Seconds 10
+        run: timeout /t 10 /nobreak >nul
 
       - name: Check service status
         run: |
           docker compose ps
-          curl http://localhost:8000/health
+          curl.exe http://localhost:8000/health
